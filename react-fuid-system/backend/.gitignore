@@ -1,0 +1,35 @@
+# Local databases - DO NOT DEPLOY
+embeddings_db/
+rag_embeddings_db/
+chroma.sqlite3
+*.sqlite3
+
+# Vector data files - DO NOT DEPLOY
+*.bin
+*.pickle
+*.faiss
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Logs
+*.log
+server-*.log
+
+# Environment
+.env
+.venv/
+venv/
+
+# IDE
+.DS_Store
+.vscode/
+*.swp
+*.swo
+
+# Temporary files
+*.tmp
+*.temp
