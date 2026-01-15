@@ -1,0 +1,12 @@
+beautifulsoup4
+langchain
+langchain-core
+langchain-community
+langchain-chroma
+langchain-ollama
+langchain-text-splitters
+sentence-transformers
+torch
+chromadb
+numpy<2
+

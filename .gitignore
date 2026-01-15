@@ -46,4 +46,7 @@ Thumbs.db
 # Large data files
 output.csv
 react-fuid-system/data.json
+RAG/data.json
+RAG/chroma/
+RAG/rag_pipeline/
 

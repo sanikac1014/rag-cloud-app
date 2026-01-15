@@ -1,14 +1,18 @@
+import argparse
 import json
 import os
 from typing import List
 from bs4 import BeautifulSoup
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_ollama import OllamaEmbeddings, OllamaLLM
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate
-from langchain.chains import create_retrieval_chain
-from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain_classic.chains import create_retrieval_chain
+from langchain_classic.chains.combine_documents import create_stuff_documents_chain
+from langchain_classic.retrievers import ContextualCompressionRetriever
+from langchain_community.cross_encoders import HuggingFaceCrossEncoder
+from langchain_classic.retrievers.document_compressors import CrossEncoderReranker
 
 
 def html_to_text(html_content: str) -> str:
@@ -78,16 +82,29 @@ def build_vector_store(chunks: List[Document], persist_dir: str = "./chroma") ->
     return vector_store
 
 
-def get_retriever(fuid: str, vector_store: Chroma):
-    """Get retriever filtered by FUID."""
+def get_retriever(fuid: str, vector_store: Chroma, rerank: bool = False):
+    """Get retriever filtered by FUID, optionally with re-ranking."""
+    if rerank:
+        base_retriever = vector_store.as_retriever(
+            search_type="similarity",
+            search_kwargs={"k": 10, "filter": {"fuid": fuid}}
+        )
+        compressor = CrossEncoderReranker(
+            model=HuggingFaceCrossEncoder(model_name="BAAI/bge-reranker-large"),
+            top_n=3
+        )
+        return ContextualCompressionRetriever(
+            base_retriever=base_retriever,
+            base_compressor=compressor
+        )
     return vector_store.as_retriever(
         search_kwargs={"k": 3, "filter": {"fuid": fuid}}
     )
 
 
-def answer_query(fuid: str, question: str, vector_store: Chroma) -> str:
+def answer_query(fuid: str, question: str, vector_store: Chroma, rerank: bool = False) -> str:
     """Answer a query using RAG for a specific product."""
-    retriever = get_retriever(fuid, vector_store)
+    retriever = get_retriever(fuid, vector_store, rerank=rerank)
     llm = OllamaLLM(model="llama3.2")
     
     prompt = ChatPromptTemplate.from_messages([
@@ -104,6 +121,13 @@ def answer_query(fuid: str, question: str, vector_store: Chroma) -> str:
 
 def main():
     """Main function to build index and test."""
+    parser = argparse.ArgumentParser(description="RAG Pipeline with optional re-ranking")
+    parser.add_argument("--rerank", type=str, default="false", 
+                        help="Enable re-ranking (true/false)")
+    args = parser.parse_args()
+    
+    rerank = args.rerank.lower() == "true"
+    
     data_file = os.path.join(os.path.dirname(__file__), "data.json")
     persist_dir = os.path.join(os.path.dirname(__file__), "chroma")
     
@@ -131,7 +155,8 @@ def main():
     
     print(f"\nQuerying FUID: {selected_fuid}")
     print(f"Question: {question}")
-    answer = answer_query(selected_fuid, question, vector_store)
+    print(f"Re-ranking: {'Enabled' if rerank else 'Disabled'}")
+    answer = answer_query(selected_fuid, question, vector_store, rerank=rerank)
     print(f"\nAnswer: {answer}")
 
 
