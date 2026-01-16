@@ -5,8 +5,11 @@ langchain-community
 langchain-chroma
 langchain-ollama
 langchain-text-splitters
+langchain-classic
 sentence-transformers
 torch
 chromadb
 numpy<2
+boto3
+requests
 
